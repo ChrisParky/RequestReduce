@@ -187,6 +187,15 @@ namespace RequestReduce.Configuration
             }
         }
 
+        [ConfigurationProperty("urlsToIgnore")]
+        public string UrlsToIgnore
+        {
+            get
+            {
+                return base["urlsToIgnore"].ToString();
+            }
+        }
+
         [ConfigurationProperty("imageSpritingDisabled")]
         public bool ImageSpritingDisabled
         {

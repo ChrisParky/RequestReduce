@@ -132,7 +132,7 @@ namespace RequestReduce.Module
             var startTransformPosition = 0;
             var endTransformPosition = 0;
 
-            for (var idx = offset; idx < (count+offset); idx++)
+            for (var idx = offset; idx < (count + offset); idx++)
                 matchPosition = HandleMatch(ref idx, buffer[idx], buffer, ref startTransformPosition, ref endTransformPosition);
 
             RRTracer.Trace("Response filter state is {0}", state);
@@ -260,7 +260,7 @@ namespace RequestReduce.Module
         private int HandleLookForStopMatch(byte b)
         {
             transformBuffer.Add(b);
-            if(IsMatch(MatchingEnd.End, b))
+            if (IsMatch(MatchingEnd.End, b))
             {
                 state = SearchState.MatchingStop;
                 matchPosition++;
@@ -270,7 +270,7 @@ namespace RequestReduce.Module
 
         private int HandleMatchingStartMatch(byte b, ref int i, byte[] buffer, ref int endTransformPosition, ref int startTransformPosition)
         {
-            if(IsMatch(MatchingEnd.Start, b))
+            if (IsMatch(MatchingEnd.Start, b))
             {
                 transformBuffer.Add(b);
                 matchPosition++;
@@ -295,12 +295,12 @@ namespace RequestReduce.Module
                     transformBuffer.RemoveRange(transformBuffer.Count - numToTrim, numToTrim);
                 DoTransform(buffer, ref startTransformPosition);
                 i = i - numToTrim - 1;
-                actualLength = actualLength - (i - actualOffset) - 1; 
+                actualLength = actualLength - (i - actualOffset) - 1;
                 actualOffset = i + 1;
             }
             else
             {
-                if(i-originalOffset < transformBuffer.Count)
+                if (i - originalOffset < transformBuffer.Count)
                     BaseStream.Write(transformBuffer.ToArray(), 0, (transformBuffer.Count - (i - originalOffset)));
                 transformBuffer.Clear();
             }
@@ -311,7 +311,7 @@ namespace RequestReduce.Module
 
         private int HandleLookForStartMatch(ref int i, byte b, byte[] buffer, ref int endTransformPosition, ref int startTransformPosition)
         {
-            if(IsMatch(MatchingEnd.Start, b))
+            if (IsMatch(MatchingEnd.Start, b))
             {
                 state = SearchState.MatchingStart;
                 transformBuffer.Clear();
@@ -334,7 +334,7 @@ namespace RequestReduce.Module
                 SetAdjacent(false);
                 state = SearchState.LookForStart;
                 var numToTrim = i - endTransformPosition;
-                if(numToTrim > 0)
+                if (numToTrim > 0)
                     transformBuffer.RemoveRange(transformBuffer.Count - numToTrim, numToTrim);
                 DoTransform(buffer, ref startTransformPosition);
                 actualLength = actualLength - (i - actualOffset); actualOffset = i;
@@ -356,13 +356,13 @@ namespace RequestReduce.Module
                 endStringLower = endStringLower.Concat(okWhenAdjacentToScriptEndLower).ToArray();
                 currentStartStringsToSkip = currentStartStringsToSkip.Concat(okWhenAdjacentToScriptStartUpper.Select(x => false)).ToArray();
             }
-            else if(!value)
+            else if (!value)
             {
                 InitSearchArrays();
                 currentStartStringsToSkip = new bool[startStringUpper.Length];
             }
             isAdjacent = value;
-            if(isAdjacent)
+            if (isAdjacent)
             {
                 for (var i = 1; i < currentStartStringsToSkip.Length; i++)
                     currentStartStringsToSkip[i] = false;
@@ -373,7 +373,7 @@ namespace RequestReduce.Module
         {
             byte[][] upper;
             byte[][] lower;
-            if(end == MatchingEnd.Start)
+            if (end == MatchingEnd.Start)
             {
                 upper = startStringUpper;
                 lower = startStringLower;
@@ -384,7 +384,7 @@ namespace RequestReduce.Module
                 lower = endStringLower;
             }
 
-            for(var i = 0; i < currentStartStringsToSkip.Length; i++)
+            for (var i = 0; i < currentStartStringsToSkip.Length; i++)
             {
                 if (currentStartStringsToSkip[i]) continue;
                 var lowerToMatch = lower[i];
@@ -439,11 +439,12 @@ namespace RequestReduce.Module
             var config = RRContainer.Current.GetInstance<IRRConfiguration>();
             if (context.Items.Contains(ContextKey) ||
                 (config.CssProcessingDisabled && config.JavaScriptProcessingDisabled) ||
+                IgnoreUrl(request, config.UrlsToIgnore) ||
                 context.Response.IsRequestBeingRedirected ||
                 RRContainer.Current.GetAllInstances<IFilter>().Where(x => x is PageFilter).FirstOrDefault(y => y.IgnoreTarget(new PageFilterContext(context.Request))) != null)
                 return;
 
-            if(request.QueryString["RRFilter"] != null && request.QueryString["RRFilter"].Equals("disabled", StringComparison.OrdinalIgnoreCase))
+            if (request.QueryString["RRFilter"] != null && request.QueryString["RRFilter"].Equals("disabled", StringComparison.OrdinalIgnoreCase))
             {
                 context.Response.Cache.SetCacheability(HttpCacheability.Private);
                 return;
@@ -457,6 +458,55 @@ namespace RequestReduce.Module
             context.Response.Filter = RRContainer.Current.GetInstance<AbstractFilter>();
             context.Items.Add(ContextKey, new object());
             RRTracer.Trace("Attaching Filter to {0}", request.RawUrl);
+        }
+
+        /// <summary>
+        /// Whether or not to ignore the url in the request reduce processing
+        /// </summary>
+        /// <param name="request">The http request</param>
+        /// <param name="urlsToIgnore">Comma seperated list of urls to check to see if the request is within it</param>
+        /// <returns>True to ignore</returns>
+        private static bool IgnoreUrl(HttpRequestBase request, string urlsToIgnore)
+        {
+            if (urlsToIgnore != null && urlsToIgnore.Any())
+            {
+                var split = urlsToIgnore.Split(',');
+                var toLower = request.Url.AbsoluteUri.ToLower();
+                foreach (var url in split)
+                {
+                    if (toLower.StartsWith(GetFullPath(request, url.ToLower())))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Gets full path 
+        /// </summary>
+        /// <param name="request">The request</param>
+        /// <param name="path">The path to get the full path for</param>
+        /// <returns>The full path</returns>
+        private static string GetFullPath(HttpRequestBase request, string path)
+        {
+            if (path.ToLower().StartsWith("http"))
+            {
+                return path;
+            }
+            else
+            {
+                return request.Url.Scheme
+                    + System.Uri.SchemeDelimiter
+                    + request.Url.Host
+                    + (path.StartsWith("/") ? path : ("/" + path));
+            }
         }
     }
 }

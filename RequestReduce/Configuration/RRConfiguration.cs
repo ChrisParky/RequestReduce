@@ -39,6 +39,7 @@ namespace RequestReduce.Configuration
         bool IsFullTrust { get; }
         event Action PhysicalPathChange;
         string JavaScriptUrlsToIgnore { get; set; }
+        string UrlsToIgnore { get; set; }
         bool ImageSpritingDisabled { get; set; }
         bool IgnoreNearFutureJavascriptDisabled { get; set; }
         string BaseAddress { get; set; }
@@ -89,6 +90,9 @@ namespace RequestReduce.Configuration
             JavaScriptUrlsToIgnore = config == null || string.IsNullOrEmpty(config.JavaScriptUrlsToIgnore)
                                     ? "ajax.googleapis.com/ajax/libs/jquery/,ajax.aspnetcdn.com/ajax/jQuery/"
                                     : config.JavaScriptUrlsToIgnore;
+            UrlsToIgnore = config == null || string.IsNullOrEmpty(config.UrlsToIgnore)
+                                ? string.Empty
+                                : config.UrlsToIgnore;
             resourcePhysicalPath = config == null ? null : string.IsNullOrEmpty(config.SpritePhysicalPath) ? null : config.SpritePhysicalPath;
             if (config != null && !string.IsNullOrEmpty(config.ContentStore))
             {
@@ -134,8 +138,8 @@ namespace RequestReduce.Configuration
         public string ResourceVirtualPath
         {
             get { return resourceVirtualPath; }
-            set 
-            { 
+            set
+            {
                 resourceVirtualPath = value;
                 ResourceAbsolutePath = GetAbsolutePath(value);
             }
@@ -157,7 +161,7 @@ namespace RequestReduce.Configuration
 
         public string ContentHost { get; set; }
 
-        public string ConnectionStringName  { get; set; }
+        public string ConnectionStringName { get; set; }
 
         public Store ContentStore
         {
@@ -174,7 +178,7 @@ namespace RequestReduce.Configuration
                 Directory.CreateDirectory(resourcePhysicalPath);
                 while (!Directory.Exists(resourcePhysicalPath))
                     Thread.Sleep(5000);
-                if(!Directory.Exists(resourcePhysicalPath))
+                if (!Directory.Exists(resourcePhysicalPath))
                     throw new IOException(string.Format("unable to create {0}", resourcePhysicalPath));
             }
         }
@@ -209,6 +213,8 @@ namespace RequestReduce.Configuration
 
 
         public string JavaScriptUrlsToIgnore { get; set; }
+
+        public string UrlsToIgnore { get; set; }
     }
 
     public static class ConfigExtensions
